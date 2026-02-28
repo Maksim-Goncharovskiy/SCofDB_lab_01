@@ -142,21 +142,26 @@ class OrderRepository:
                     }
                 )
                           
-        for update in order.status_history:
-            insert_history_update_query = text("""
-                INSERT INTO order_status_history (id, order_id, status, changed_at)
-                VALUES (:id, :order_id, :status, :changed_at)
-            """)
+        if order.status_history:
+            delete_history_query = text("""DELETE FROM order_status_history WHERE order_id = :order_id""")
+            
+            await self.session.execute(delete_history_query, {"order_id": order.id})
+                
+            for history in order.status_history:
+                insert_history_query = text("""
+                    INSERT INTO order_status_history (id, order_id, status, changed_at)
+                    VALUES (:id, :order_id, :status, :changed_at)
+                """)
 
-            await self.session.execute(
-                insert_history_update_query,
-                {
-                    "id": update.id,
-                    "order_id": order.id,
-                    "status": update.status.value,
-                    "changed_at": update.changed_at,
-                }
-            )
+                await self.session.execute(
+                    insert_history_query,
+                    {
+                        "id": history.id,
+                        "order_id": order.id,
+                        "status": history.status.value,
+                        "changed_at": history.changed_at,
+                    }
+                )
 
     # TODO: Реализовать find_by_id(order_id: UUID) -> Optional[Order]
     # Загрузить заказ со всеми товарами и историей
